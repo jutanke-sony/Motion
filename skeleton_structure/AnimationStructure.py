@@ -1,9 +1,9 @@
 import numpy as np
 
 try:
-    from . import Animation
+    from data_wrappers import Animation
 except:
-    import Animation
+    import data_wrappers.Animation
 
 
 """ Maya Functions """

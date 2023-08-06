@@ -2,13 +2,13 @@ import numpy as np
 import scipy.linalg as linalg
 
 try:
-    from . import Animation
+    from data_wrappers import Animation
     from . import AnimationStructure
-    from .Quaternions import Quaternions
+    from data_wrappers.Quaternions import Quaternions
 except:
-    import Animation
+    import data_wrappers.Animation
     import AnimationStructure
-    from Quaternions import Quaternions
+    from data_wrappers.Quaternions import Quaternions
 
 
 class BasicInverseKinematics:

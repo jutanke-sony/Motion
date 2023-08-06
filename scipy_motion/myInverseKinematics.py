@@ -2,9 +2,10 @@ import numpy as np
 import scipy.linalg as linalg
 
 import myAnimation as Animation
-import AnimationStructure
+from skeleton_structure import AnimationStructure
 from scipy.spatial.transform import Rotation as R
-import copy
+
+
 # from Quaternions import Quaternions
 
 class BasicInverseKinematics:

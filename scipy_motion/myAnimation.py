@@ -3,7 +3,9 @@ import operator
 import numpy as np
 import numpy.core.umath_tests as ut
 
-import AnimationStructure
+from skeleton_structure import AnimationStructure
+
+
 # from Quaternions import Quaternions
 
 class Animation:

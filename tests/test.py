@@ -1,11 +1,11 @@
 import numpy as np
-from Quaternions import Quaternions
-import myBVH
+from data_wrappers.Quaternions import Quaternions
+import scipy_motion.myBVH
 from bvh import BVH
-import myAnimation
-import Animation
-import myInverseKinematics as myIK
-import InverseKinematics as IK
+import scipy_motion.myAnimation
+from data_wrappers import Animation
+import scipy_motion.myInverseKinematics as myIK
+from skeleton_structure import InverseKinematics as IK
 import copy
 import os.path as osp
 from scipy.spatial.transform import Rotation as R
@@ -262,7 +262,7 @@ def test_anim_from_pose():
 
 
 def test_Quat():
-    from Quaternions import Quaternions
+    from data_wrappers.Quaternions import Quaternions
     order = 'xyz'
     for t in np.arange(100):
 

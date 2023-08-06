@@ -1,10 +1,9 @@
 import numpy as np
 from scipy.spatial import distance
 
-from Quaternions import Quaternions
-import Animation
-import AnimationStructure
-    
+from data_wrappers.Quaternions import Quaternions
+
+
 def constrain(positions, constraints):
     """
     Constrain animation positions given

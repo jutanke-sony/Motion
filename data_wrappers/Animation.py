@@ -13,7 +13,7 @@ try:
     from . import AnimationStructure
     from .Quaternions import Quaternions
 except:
-    import AnimationStructure
+    from skeleton_structure import AnimationStructure
     from Quaternions import Quaternions
 
 
