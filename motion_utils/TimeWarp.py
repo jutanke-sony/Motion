@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.spatial as sp_spatial
 
-from AStar import AStar
+from motion_utils.AStar import AStar
 
 class AStarTW:
     

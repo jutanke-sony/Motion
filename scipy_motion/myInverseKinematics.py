@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.linalg as linalg
 
-import myAnimation as Animation
+import scipy_motion.myAnimation as Animation
 from skeleton_structure import AnimationStructure
 from scipy.spatial.transform import Rotation as R
 

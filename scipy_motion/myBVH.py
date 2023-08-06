@@ -1,7 +1,7 @@
 import re
 import numpy as np
 
-from myAnimation import Animation
+from scipy_motion.myAnimation import Animation
 # from Quaternions import Quaternions
 from scipy.spatial.transform import Rotation as R
 

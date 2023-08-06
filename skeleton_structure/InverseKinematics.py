@@ -1,15 +1,8 @@
 import numpy as np
 import scipy.linalg as linalg
-
-try:
-    from data_wrappers import Animation
-    from . import AnimationStructure
-    from data_wrappers.Quaternions import Quaternions
-except:
-    import data_wrappers.Animation
-    import AnimationStructure
-    from data_wrappers.Quaternions import Quaternions
-
+from data_wrappers import Animation
+from skeleton_structure import AnimationStructure
+from data_wrappers.Quaternions import Quaternions
 
 class BasicInverseKinematics:
     """
