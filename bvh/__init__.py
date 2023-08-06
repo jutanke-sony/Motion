@@ -1,1 +1,1 @@
-from .BVH import *
+from bvh.BVH import *
