@@ -1,15 +1,11 @@
 import numpy as np
 from Quaternions import Quaternions
 import myBVH
-import BVH
+from bvh import BVH
 import myAnimation
 import Animation
 import myInverseKinematics as myIK
 import InverseKinematics as IK
-import math
-import sys
-from model_zoo import fk_layer
-import torch
 import copy
 import os.path as osp
 from scipy.spatial.transform import Rotation as R
