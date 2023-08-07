@@ -1,3 +1,3 @@
-import data_wrappers.Animation
-import data_wrappers.Pivots
-import data_wrappers.Quaternions
+import data_wrappers.animation_wrapper
+import data_wrappers.pivots_wrapper
+import data_wrappers.quaternions_wrapper

@@ -6,7 +6,7 @@ import numpy.core.umath_tests as ut
 from skeleton_structure import AnimationStructure
 
 
-# from Quaternions import Quaternions
+from data_wrappers.quaternions_wrapper import Quaternions
 
 class Animation:
     """

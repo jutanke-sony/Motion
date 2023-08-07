@@ -1,5 +1,5 @@
 import numpy as np
-from data_wrappers import Animation
+from data_wrappers import animation_wrapper
 
 
 
@@ -241,7 +241,7 @@ def constraints(anim, **kwargs):
     Parameters
     ----------
     
-    anim : Animation
+    anim : animation_wrapper
         Input animation
         
     masses : (F, J) ndarray
@@ -310,7 +310,7 @@ def graph(anim):
     Parameters
     ----------
     
-    anim : Animation
+    anim : animation_wrapper
         input animation
         
     Returns
@@ -345,7 +345,7 @@ def distances(anim):
     Parameters
     ----------
     
-    anim : Animation
+    anim : animation_wrapper
         input animation
         
     Returns

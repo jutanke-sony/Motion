@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.linalg as linalg
-from data_wrappers import Animation
+from data_wrappers import animation_wrapper
 from skeleton_structure import AnimationStructure
-from data_wrappers.Quaternions import Quaternions
+from data_wrappers.quaternions_wrapper import Quaternions
 
 class BasicInverseKinematics:
     """
@@ -35,7 +35,7 @@ class BasicInverseKinematics:
     Parameters
     ----------
     
-    animation : Animation
+    animation : animation_wrapper
         animation input
         
     positions : (F, J, 3) ndarray
@@ -137,7 +137,7 @@ class JacobianInverseKinematics:
     Parameters
     ----------
     
-    animation : Animation
+    animation : animation_wrapper
         animation to solve inverse problem on
 
     targets : {int : (F, 3) ndarray}

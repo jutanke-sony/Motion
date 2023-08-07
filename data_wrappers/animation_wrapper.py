@@ -7,7 +7,7 @@
 import operator
 import numpy as np
 from skeleton_structure import AnimationStructure
-from data_wrappers.Quaternions import Quaternions
+from data_wrappers.quaternions_wrapper import Quaternions
 
 class Animation:
     """
@@ -31,13 +31,15 @@ class Animation:
         parents   : (J) ndarray        | Joint Parents
     """
 
-    def __init__(self, rotations, positions, orients, offsets, parents):
+    def __init__(self, rotations, positions, orients, offsets, parents, names, frametime):
 
         self.rotations = rotations
         self.positions = positions
         self.orients = orients
         self.offsets = offsets
         self.parents = parents
+        self.names = names
+        self.frametime = frametime
 
     def __op__(self, op, other):
         return Animation(
@@ -45,14 +47,19 @@ class Animation:
             op(self.positions, other.positions),
             op(self.orients, other.orients),
             op(self.offsets, other.offsets),
-            op(self.parents, other.parents))
+            op(self.parents, other.parents),
+            op(self.names, other.names),
+            op(self.frametime, other.frametime),
 
+        )
     def __iop__(self, op, other):
-        self.rotations = op(self.roations, other.rotations)
-        self.positions = op(self.roations, other.positions)
+        self.rotations = op(self.rotations, other.rotations)
+        self.positions = op(self.positions, other.positions)
         self.orients = op(self.orients, other.orients)
         self.offsets = op(self.offsets, other.offsets)
         self.parents = op(self.parents, other.parents)
+        self.names = op(self.names, other.names)
+        self.frametime = op(self.frametime, other.frametime)
         return self
 
     def __sop__(self, op):
@@ -61,7 +68,10 @@ class Animation:
             op(self.positions),
             op(self.orients),
             op(self.offsets),
-            op(self.parents))
+            op(self.parents),
+            op(self.names),
+            op(self.frametime)
+        )
 
     def __add__(self, other):
         return self.__op__(operator.add, other)
@@ -110,14 +120,20 @@ class Animation:
                 self.positions[k],
                 self.orients[k[1:]],
                 self.offsets[k[1:]],
-                reindexed_parents)
+                reindexed_parents,
+                self.names[k[1:]],
+                self.frametime
+            )
         else:
             return Animation(
                 self.rotations[k],
                 self.positions[k],
                 self.orients,
                 self.offsets,
-                self.parents)
+                self.parents,
+                self.names,
+                self.frametime
+            )
 
     def __setitem__(self, k, v):
         if isinstance(k, tuple):
@@ -126,12 +142,16 @@ class Animation:
             self.orients.__setitem__(k[1:], v.orients)
             self.offsets.__setitem__(k[1:], v.offsets)
             self.parents.__setitem__(k[1:], v.parents)
+            self.names.__setitem__(k[1:], v.names)
+            self.frametime.__setitem__(k[1:], v.frametime)
         else:
             self.rotations.__setitem__(k, v.rotations)
             self.positions.__setitem__(k, v.positions)
             self.orients.__setitem__(k, v.orients)
             self.offsets.__setitem__(k, v.offsets)
             self.parents.__setitem__(k, v.parents)
+            self.names.__setitem__(k, v.names)
+            self.frametime.__setitem__(k, v.frametime)
 
     @property
     def shape(self):
@@ -167,41 +187,6 @@ class Animation:
             Quaternions.exp(rotations), positions,
             Quaternions.exp(orients), offsets,
             parents.copy())
-
-    # def reorder(self, new_order):
-    #     self.rotations = self.rotations[:, new_order]
-    #     self.positions = self.positions[:, new_order]
-    #     self.offsets = self.offsets[new_order]
-    #     if self.orients.shape[0] > 0:
-    #         self.orients = self.orients[:, new_order]
-    #
-    #     # reorder parents
-    #     sorted_order_inversed = {num: i for i, num in enumerate(new_order)}
-    #     sorted_order_inversed[-1] = -1
-    #     self.parents = np.array([sorted_order_inversed[self.parents[i]] for i in new_order])
-
-    # def sort(self, names):
-    #     children = AnimationStructure.children_list(self.parents)
-    #     sorted_order = np.zeros(self.parents.shape, dtype=np.int)
-    #     root_idx = np.where(self.parents == -1)[0][0]
-    #     sorted_order[0] = root_idx
-    #
-    #     def get_sorted_order(sorted_order, parent_out_idx, parent_in_idx, children):
-    #         out_idx = parent_out_idx  # return same index in case there are no children
-    #         for child in children[parent_in_idx]:
-    #             out_idx = out_idx + 1
-    #             sorted_order[out_idx] = child
-    #             sorted_order, out_idx = get_sorted_order(sorted_order, out_idx, child, children)
-    #         return sorted_order, out_idx
-    #
-    #     sorted_order, _ = get_sorted_order(sorted_order, 0, root_idx, children)
-    #
-    #     anim = self.copy()
-    #     anim.reorder(sorted_order)
-    #     if names is not None:
-    #         names = names[sorted_order]
-    #
-    #     return anim, names
 
 
 """ Maya Interaction """
@@ -356,7 +341,7 @@ def load_from_maya(root, start, end):
 
     pm.currentTime(original_time)
 
-    return Animation(rotations, positions, orients, offsets, parents), names
+    return Animation(rotations, positions, orients, offsets, parents, names, 0.3)
 
 
 def transforms_local(anim):
