@@ -130,14 +130,20 @@ def quat2euler(q, order='xyz', degrees=True):
 
 
 def euler2mat(rots, order='xyz'):
-    axis = {'x': torch.tensor((1, 0, 0), device=rots.device),
-            'y': torch.tensor((0, 1, 0), device=rots.device),
-            'z': torch.tensor((0, 0, 1), device=rots.device)}
+    # TODO: find better solution !!
+    if torch.is_tensor(rots):
+        axis = {'x': torch.tensor((1, 0, 0), device=rots.device),
+                'y': torch.tensor((0, 1, 0), device=rots.device),
+                'z': torch.tensor((0, 0, 1), device=rots.device)}
+    else:
+        axis = {'x': torch.tensor((1, 0, 0)),
+                'y': torch.tensor((0, 1, 0)),
+                'z': torch.tensor((0, 0, 1))}
 
     rots = rots / 180 * np.pi
     mats = []
     for i in range(3):
-        aa = axis[order[i]] * rots[..., i].unsqueeze(-1)
+        aa = axis[order[i]] * rots[None, ..., i]
         mats.append(aa2mat(aa))
     return mats[0] @ (mats[1] @ mats[2])
 
