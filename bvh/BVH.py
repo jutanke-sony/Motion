@@ -6,6 +6,10 @@
 
 import re
 import numpy as np
+import torch
+
+from motion_utils.transforms import quat2mat, repr6d2mat, euler2mat
+
 
 try:
     from data_wrappers.animation_wrapper import Animation
@@ -76,6 +80,7 @@ def load(filename, start=None, end=None, order=None, world=False, need_quater=Fa
     offsets = np.array([]).reshape((0, 3))
     parents = np.array([], dtype=int)
     orders = []
+    frametime = 1.0 / 24.0
 
     for line in f:
 
@@ -193,9 +198,24 @@ def load(filename, start=None, end=None, order=None, world=False, need_quater=Fa
             quat = Quaternions.from_euler(np.radians(rot), order=order, world=world)
             rot = np.degrees(quat.euler(order=canonical_order))
         all_rotations.append(rot)
-    rotations = np.concatenate(all_rotations, axis=1)
 
-    return Animation(rotations, positions, orients, offsets, parents, names, frametime)
+    ## Perform forward kinematics to obtain actual positions (and not only the root joint pos)
+    to_mat_conversion = lambda r: euler2mat(r, order)
+    if need_quater:
+        to_mat_conversion = lambda r: quat2mat(r)
+    rotations = np.concatenate(all_rotations, axis=1)
+    rotations = np.apply_along_axis(to_mat_conversion, 2, torch.from_numpy(rotations))
+    global_positions = torch.from_numpy(positions.copy())
+    global_rot = torch.from_numpy(rotations.copy())
+    offsets = torch.from_numpy(offsets)
+
+    for i, p in enumerate(parents):
+        if i != 0:
+            global_rot[:, i] = torch.matmul(global_rot[:, p], global_rot[:, i])
+            joint_off = torch.cat(global_rot.shape[0]*[offsets[i]]).reshape((-1, 3, 1))
+            global_positions[:, i] = torch.matmul(global_rot[:, p], joint_off).squeeze(-1) + global_positions[:, p]
+
+    return Animation(rotations, global_positions.numpy(), orients, offsets.numpy(), parents, names, frametime)
 
 
 def save(filename, anim, names=None, frametime=1.0/24.0, order='xyz', positions=False, orients=True):
