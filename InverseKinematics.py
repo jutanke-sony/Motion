@@ -1,12 +1,15 @@
 import numpy as np
 import scipy.linalg as linalg
 
-import scipy_motion.myAnimation as Animation
-from skeleton_structure import AnimationStructure
-from scipy.spatial.transform import Rotation as R
+try:
+    from . import Animation
+    from . import AnimationStructure
+    from .Quaternions import Quaternions
+except:
+    import Animation
+    import AnimationStructure
+    from Quaternions import Quaternions
 
-
-# from Quaternions import Quaternions
 
 class BasicInverseKinematics:
     """
@@ -63,122 +66,65 @@ class BasicInverseKinematics:
         self.positions = positions
         self.iterations = iterations
         self.silent = silent
-
-
-    def scipy_align(self, joint, jdirs, ddirs, rot_mat_local, rot_mat_global):
-        n_frames = self.animation.shape[0]
-        for frame in np.arange(n_frames):
-            ddirs_origin_axes = R.from_matrix(rot_mat_global[frame, joint]).apply(ddirs[frame], inverse=True)
-            jdirs_origin_axes = R.from_matrix(rot_mat_global[frame, joint]).apply(jdirs[frame], inverse=True)
-            rotation_wish = R.align_vectors(ddirs_origin_axes, jdirs_origin_axes)[0]
-            rot_mat_local[frame, joint] = rotation_wish.as_matrix()
-
-        return rot_mat_local
-
-
-    def angle_axis_to_rotvec(self, angles, axises):
-        axes_norms = np.linalg.norm(axises, axis=2, keepdims=True)
-        axes_norms[axes_norms == 0] = 1
-        axes_norms = np.repeat(axes_norms, 3, axis=2)
-        angles_rep = np.repeat(angles[:, :, np.newaxis], 3, axis=2)
-        rotvecs = axises / axes_norms * angles_rep
-        return rotvecs
-
-
-    def axis_angle_align(self, joint, c, jdirs, ddirs, jsums, dsums, rot_mat_local, rot_global):
-
-        n_frames = self.animation.shape[0]
-        n_joints = self.animation.shape[1]
-        n_children = c.shape[0]
-
-        jdirs_origin_axes = np.zeros_like(jdirs)
-        ddirs_origin_axes = np.zeros_like(ddirs)
-        j_indices = np.arange(n_frames) * n_joints + joint
-        for child_idx, child in enumerate(c):
-            jdirs_origin_axes[:, child_idx, :] = rot_global[j_indices].apply(jdirs[:, child_idx, :], inverse=True)
-            ddirs_origin_axes[:, child_idx, :] = rot_global[j_indices].apply(ddirs[:, child_idx, :], inverse=True)
-
-        angles = np.arccos(np.sum(jdirs_origin_axes * ddirs_origin_axes, axis=2).clip(-1, 1))
-        assert (np.abs(angles) < np.pi).all()
-        axises = np.cross(jdirs_origin_axes, ddirs_origin_axes)
-
-        '''
-        # special case where ddirs and jdirs lie on the same line in opposite directions (i.e., a 180 degrees rotation)
-        is_180_angle = np.isclose(axises.sum(axis=2), 0) & ~np.isclose(angles, 0, atol=1e-4)
-        for i in np.where(is_180_angle)[0]:
-            # sample any point that is not on the line of ddirs/jdirs
-            while True:
-                pt = np.random.random(2)
-                axis = np.cross(jdirs_origin_axes[i], pt)
-                if axis.sum() != 0:
-                    break
-            axises[i] = axis
-        '''
-
-        rotvecs = self.angle_axis_to_rotvec(angles, axises)
-
-        # find out which of the given bones are not of zero length
-        # zero length bones produces a meaningless rotation
-        jdirs_positive = (jsums > 1e-4)
-        ddirs_positive = (dsums > 1e-4)
-        assert (jdirs_positive[0] == jdirs_positive).all() and (jdirs_positive[0] == ddirs_positive).all()
-        dirs_positive = jdirs_positive[0]
-
-        rotations = R.from_rotvec(rotvecs.reshape(-1, 3))
-
-        if rotvecs.shape[1] == 1:
-            rot_mat_averages = rotations.as_matrix()
-        else:
-            rot_mat_averages = np.zeros((n_frames, 3, 3))
-            for frame in np.arange(n_frames):
-                idx = np.arange(frame * n_children, (frame + 1) * n_children)[dirs_positive]
-                rot_mat_averages[frame] = rotations[idx].mean().as_matrix()
-
-        rot_mat_local[:, joint] = (R.from_matrix(rot_mat_local[:, joint]) * R.from_matrix(rot_mat_averages)).as_matrix()
-
-        return rot_mat_local
-
-
-    def __call__(self, align_method='scipy'):
-
+        
+    def __call__(self):
+        
         children = AnimationStructure.children_list(self.animation.parents)
-
+        
         for i in range(self.iterations):
-
+        
             for j in AnimationStructure.joints(self.animation.parents):
-
+                
                 c = np.array(children[j])
-                n_children = len(c)
-                if n_children == 0: continue
+                if len(c) == 0: continue
 
                 anim_transforms = Animation.transforms_global(self.animation)
-                anim_positions = anim_transforms[:, :, :3, 3]  # look at the translation vector inside a rotation matrix
-                rot_mat_global = anim_transforms[:, :, :3, :3]
-                rot_global = R.from_matrix(
-                    rot_mat_global.reshape(-1, 3, 3))  # .as_quat().reshape((-1, anim.shape[1], 4))
-                rot_mat_local = self.animation.rotations.as_matrix().reshape(self.animation.shape + (3, 3))
+                anim_positions = anim_transforms[:,:,:3,3] # look at the translation vector inside a rotation matrix
+                anim_rotations = Quaternions.from_transforms(anim_transforms)
+                # self.animation.rotations[1,0]*(self.animation.offsets[1] + self.animation.rotations[1,1]*self.animation.offsets[2]) ==
+                #         anim_positions[1, 2]
 
-                jdirs = anim_positions[:, c] - anim_positions[:, np.newaxis, j]
-                ddirs = self.positions[:, c] - anim_positions[:, np.newaxis, j]
+                jdirs = anim_positions[:,c] - anim_positions[:,np.newaxis,j]  #  limb vectors given by animation
+                ddirs = self.positions[:,c] - self.positions[:,np.newaxis,j]  #  limb vectors given by input positions (target)
 
-                jsums = np.sqrt(np.sum(jdirs ** 2.0, axis=-1)) + 1e-10
-                dsums = np.sqrt(np.sum(ddirs ** 2.0, axis=-1)) + 1e-10
+                if len(c) > 1 and (jdirs==0).all() and (ddirs==0).all(): # there was an expansion of high degree vertices (expand_topology())
+                    # self.animation.rotations[:, j] remains untouched
+                    continue
 
-                jdirs = jdirs / jsums[:, :, np.newaxis]
-                ddirs = ddirs / dsums[:, :, np.newaxis]
 
-                if align_method == 'scipy':
-                    rot_mat_local = self.scipy_align(j, jdirs, ddirs, rot_mat_local, rot_mat_global)
+                jsums = np.sqrt(np.sum(jdirs**2.0, axis=-1)) + 1e-20
+                dsums = np.sqrt(np.sum(ddirs**2.0, axis=-1)) + 1e-20
+                
+                jdirs = jdirs / jsums[:,:,np.newaxis]
+                ddirs = ddirs / dsums[:,:,np.newaxis]
+                
+                angles = np.arccos(np.sum(jdirs * ddirs, axis=2).clip(-1, 1))
+
+                axises = np.cross(jdirs, ddirs)
+                if jdirs.shape[1] == 1: # for a single child reconstruction should be exact
+                    assert np.allclose(Quaternions.from_angle_axis(angles, np.cross(jdirs, ddirs)) * jdirs, ddirs)
+                axises = -anim_rotations[:,j,np.newaxis] * axises
+
+                # find out which of the given bones are not of zero length
+                # zero length bones produces a meaningless rotation
+                jdirs_positive = (jsums > 1e-4)
+                ddirs_positive = (dsums > 1e-4)
+                dirs_positive = jdirs_positive[0]
+
+                rotations = Quaternions.from_angle_axis(angles, axises)
+
+                if rotations.shape[1] == 1:
+                    averages = rotations[:,0]
                 else:
-                    assert align_method == 'axis_angle'
-                    rot_mat_local = self.axis_angle_align(j, c, jdirs, ddirs, jsums, dsums, rot_mat_local, rot_global)
-                self.animation.rotations = R.from_matrix(rot_mat_local.reshape(-1, 3, 3))
+                    averages = Quaternions.exp(rotations[:,dirs_positive].log().mean(axis=-2))
 
+                self.animation.rotations[:,j] = self.animation.rotations[:,j] * averages
+            
             if not self.silent:
                 anim_positions = Animation.positions_global(self.animation)
-                error = np.mean(np.sum((anim_positions - self.positions) ** 2.0, axis=-1) ** 0.5)  # axis=-1)
-                print('[BasicInverseKinematics] Iteration %i Error: %f' % (i + 1, error.round(3)))
-
+                error = np.mean(np.sum((anim_positions - self.positions)**2.0, axis=-1)**0.5) # axis=-1)
+                print('[BasicInverseKinematics] Iteration %i Error: %f' % (i+1, error))
+        
         return self.animation
 
 
@@ -570,3 +516,41 @@ class ICP:
                 error = np.mean(np.sqrt(np.sum((curr - self.goal)**2.0, axis=-1)))
                 print('[ICP] Iteration %i | Error: %f' % (i+1, error))
                 
+
+def animation_from_positions(positions, parents, offsets=None):
+
+    if not isinstance(parents, np.ndarray) and isinstance(parents, list):
+        parents = np.array(parents)
+    root_idx = np.where(parents == -1)[0][0]
+
+    if offsets is None:
+        orig_offsets = Animation.offsets_from_positions(positions, parents)
+
+        # compute offsets over all joints except for root
+        idx_no_root = np.delete(np.arange(positions.shape[1]), root_idx)
+        orig_offsets_no_root = orig_offsets[:, idx_no_root]
+
+        # prevent a zero offset (can happen in first iterations of generated motion). such offset is ill posed and
+        # results in ambigious angles when computing inverse kinematics
+        orig_offsets_no_root[orig_offsets_no_root == 0] = 1e-6 * np.random.randn()
+
+        # when synthesising motion, bone length is not always fixed among frames. We calculate mean bone length and
+        # use it for the offset
+        bone_lens = np.linalg.norm(orig_offsets_no_root, axis=2)[:, :, np.newaxis]
+        normed_offsets_no_root = np.divide(orig_offsets_no_root, bone_lens, out=np.zeros_like(orig_offsets_no_root), where=bone_lens!=0)
+        offsets_no_root = normed_offsets_no_root[0] * bone_lens.mean(axis=0)
+
+        offsets = orig_offsets[0]
+        offsets[idx_no_root] = offsets_no_root
+
+    anim, sorted_order, parents = Animation.animation_from_offsets(offsets, parents, positions.shape)
+    positions = positions[:, sorted_order]
+    sorted_root_idx = np.where(sorted_order == root_idx)[0][0]
+
+    anim.positions[:,sorted_root_idx] = positions[:,0] # keep root positions. important for IK
+
+    # apply IK
+    ik = BasicInverseKinematics(anim, positions, silent=False, iterations=1)
+    new_anim = ik()
+    return new_anim, sorted_order, parents
+

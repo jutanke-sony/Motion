@@ -1,2 +1,0 @@
-import skeleton_structure.AnimationStructure
-import skeleton_structure.InverseKinematics

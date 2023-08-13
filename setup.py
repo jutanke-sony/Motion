@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="motion",
-    py_modules=["bvh","data_wrappers","quaternions","motion_utils","scipy_motion","skeleton_structure"],
+    py_modules=["BVH", "Animation", "quaternions", "Quaternions", "Pivots", "AnimationStructure", "InverseKinematics", "TimeWrap", "visualizations"],
     version="1.0",
     description="Motion library, forked from https://github.com/sigal-raab/Motion.git",
     author="Sigal Raab",

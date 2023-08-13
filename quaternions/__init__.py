@@ -1,1 +1,1 @@
-from quaternions.quaternions import *
+from quaternion import *

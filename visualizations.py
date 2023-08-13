@@ -1,3 +1,6 @@
+from Animation import *
+import BVH
+from Animation import *
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -8,9 +11,9 @@ import mpl_toolkits.mplot3d.axes3d as p3
 from textwrap import wrap
 
 
-def plot_3d_motion(save_path, parents, joints_positions, title, figsize=(10, 10), fps=120, radius=10):
+def plot_3d_motion(animation, save_path, figsize=(10, 10), fps=120, radius=10, title = ""):
     matplotlib.use('Agg')
-    joints_positions = joints_positions
+    joints_positions = positions_global(animation)
     title = '\n'.join(wrap(title, 20))
 
     def init():
@@ -60,8 +63,13 @@ def plot_3d_motion(save_path, parents, joints_positions, title, figsize=(10, 10)
         ax.dist = 7.5
         plot_xzPlane(MINS[0] - trajec[index, 0], MAXS[0] - trajec[index, 0], 0, MINS[2] - trajec[index, 1],
                     MAXS[2] - trajec[index, 1])
-        for joint in range(1, len(parents)):
-            ax.plot3D(data[index, [joint, parents[joint]], 0], data[index, [joint, parents[joint]], 1], data[index, [joint, parents[joint]], 2],
+        if index > 1:
+            ax.plot3D(trajec[:index, 0] - trajec[index, 0], np.zeros_like(trajec[:index, 0]),
+                      trajec[:index, 1] - trajec[index, 1], linewidth=1.0,
+                      color='blue')
+        #             ax = plot_xzPlane(ax, MINS[0], MAXS[0], 0, MINS[2], MAXS[2])
+        for joint in range(1, len(animation.parents)):
+            ax.plot3D(data[index, [joint, animation.parents[joint]], 0], data[index, [joint, animation.parents[joint]], 1], data[index, [joint, animation.parents[joint]], 2],
                       color="green", linewidth=2, linestyle='-',  marker='o')
 
         plt.axis('off')
@@ -73,26 +81,3 @@ def plot_3d_motion(save_path, parents, joints_positions, title, figsize=(10, 10)
 
     ani.save(save_path, fps=fps)
     plt.close()
-
-def update_offsets(parents, offsets):
-    global_pose = offsets.copy()
-    for joint in range(1, len(parents)):
-        global_pose[joint] = global_pose[joint] + global_pose[parents[joint]]
-    return global_pose
-def display_skeleton_base_pose(save_path, parents, offsets):
-    fig = plt.figure(figsize=(10, 10))
-    ax = p3.Axes3D(fig)
-    global_pose = update_offsets(parents, offsets)
-    MINS = global_pose.min(axis=0)
-    MAXS = global_pose.max(axis=0)
-    ax.set_xlim3d(MINS[0], MAXS[0])
-    ax.set_ylim3d(MINS[1], MAXS[1])
-    ax.set_zlim3d(MINS[2], MAXS[2])
-    for joint in range(1, len(parents)):
-        xs = np.array(offsets[[joint, parents[joint]], 0])
-        print(xs.shape)
-        ax.plot3D(global_pose[[joint, parents[joint]], 0], global_pose[[joint, parents[joint]], 1],
-                  global_pose[[joint, parents[joint]], 2],
-                  color="green", linewidth=2, linestyle='-', marker='o')
-
-    plt.savefig(save_path)

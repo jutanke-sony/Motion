@@ -6,19 +6,15 @@
 
 import re
 import numpy as np
-import torch
-
-from motion_utils.transforms import quat2mat, repr6d2mat, euler2mat
-
 
 try:
-    from data_wrappers.animation_wrapper import Animation
-    from skeleton_structure import AnimationStructure
-    from data_wrappers.quaternions_wrapper import Quaternions
+    from .Animation import Animation
+    from . import AnimationStructure
+    from .Quaternions import Quaternions
 except:
-    from data_wrappers.animation_wrapper import Animation
-    import skeleton_structure.AnimationStructure
-    from data_wrappers.quaternions_wrapper import Quaternions
+    from Animation import Animation
+    import AnimationStructure
+    from Quaternions import Quaternions
 
 channelmap = {
     'Xrotation' : 'x',
@@ -38,147 +34,166 @@ ordermap = {
     'z' : 2,
 }
 
-
-def load(filename, start=None, end=None, order=None, world=False, need_quater=False) -> Animation:
+def load(filename, start=None, end=None, order=None, world=True):
     """
     Reads a BVH file and constructs an animation
-
+    
     Parameters
     ----------
     filename: str
         File to be opened
-
+        
     start : int
         Optional Starting Frame
-
+        
     end : int
         Optional Ending Frame
-
+    
     order : str
         Optional Specifier for joint order.
         Given as string E.G 'xyz', 'zxy'
-
+        
     world : bool
         If set to true euler angles are applied
         together in world space rather than local
         space
+
     Returns
     -------
-
+    
     (animation, joint_names, frametime)
         Tuple of loaded animation and joint names
     """
-
+    
     f = open(filename, "r")
 
     i = 0
     active = -1
     end_site = False
+    end_site_is_joint = False
 
     names = []
     orients = Quaternions.id(0)
-    offsets = np.array([]).reshape((0, 3))
+    offsets = np.array([]).reshape((0,3))
     parents = np.array([], dtype=int)
-    orders = []
-    frametime = 1.0 / 24.0
-
+    end_site_joints = np.array([], dtype=int)
+    
     for line in f:
-
+        
         if "HIERARCHY" in line: continue
         if "MOTION" in line: continue
 
-        """ Modified line read to handle mixamo data """
-        #        rmatch = re.match(r"ROOT (\w+)", line)
-        rmatch = re.match(r"ROOT (\w+:?\w+)", line)
+        rmatch = re.match(r"\s*ROOT\s+(\S+)", line)
         if rmatch:
             names.append(rmatch.group(1))
-            offsets = np.append(offsets, np.array([[0, 0, 0]]), axis=0)
-            orients.qs = np.append(orients.qs, np.array([[1, 0, 0, 0]]), axis=0)
-            parents = np.append(parents, active)
-            active = (len(parents) - 1)
+            offsets    = np.append(offsets,    np.array([[0,0,0]]),   axis=0)
+            orients.qs = np.append(orients.qs, np.array([[1,0,0,0]]), axis=0)
+            parents    = np.append(parents, active)
+            active = (len(parents)-1)
             continue
 
         if "{" in line: continue
 
         if "}" in line:
+            # if end_site: end_site = False
+            # else: active = parents[active]
+            if not end_site or end_site_is_joint:
+                active = parents[active]
             if end_site:
                 end_site = False
-            else:
-                active = parents[active]
+                end_site_is_joint = False
             continue
-
+        
         offmatch = re.match(r"\s*OFFSET\s+([\-\d\.e]+)\s+([\-\d\.e]+)\s+([\-\d\.e]+)", line)
         if offmatch:
-            if not end_site:
-                offsets[active] = np.array([list(map(float, offmatch.groups()))])
+            offsets[active] = np.array([list(map(float, offmatch.groups()))])
+            if end_site and all(offsets[active]==0):
+                # an end site of offset zero is not considered a joint
+                names = names[:-1]
+                offsets = offsets[:-1]
+                orients.qs = orients.qs[:-1]
+                active = parents[active]
+                parents = parents[:-1]
+                end_site_joints = end_site_joints[:-1]
+                end_site_is_joint = False
             continue
-
+           
         chanmatch = re.match(r"\s*CHANNELS\s+(\d+)", line)
         if chanmatch:
             channels = int(chanmatch.group(1))
-
-            channelis = 0 if channels == 3 else 3
-            channelie = 3 if channels == 3 else 6
-            parts = line.split()[2 + channelis:2 + channelie]
-            if any([p not in channelmap for p in parts]):
-                continue
-            order = "".join([channelmap[p] for p in parts])
-            orders.append(order)
+            if not order:  # do NOT ask 'if order is NONE' because order may be an empty srint ('')
+                channelis = 0 if channels == 3 else 3
+                channelie = 3 if channels == 3 else 6
+                parts = line.split()[2+channelis:2+channelie]
+                if any([p not in channelmap for p in parts]):
+                    continue
+                print_order = "".join([channelmap[p] for p in parts])
+                order = print_order[::-1] # in a bvh file, first rotation axis is printed last
             continue
 
-        """ Modified line read to handle mixamo data """
-        #        jmatch = re.match("\s*JOINT\s+(\w+)", line)
-        jmatch = re.match("\s*JOINT\s+(\w+:?\w+)", line)
+        jmatch = re.match("\s*JOINT\s+(\S+)", line) #  match <white-spaces>Joint<white-spaces><non-white-spaces>, .e.g: Joint mixamorig:LeftArm
         if jmatch:
             names.append(jmatch.group(1))
+            offsets    = np.append(offsets,    np.array([[0,0,0]]),   axis=0)
+            orients.qs = np.append(orients.qs, np.array([[1,0,0,0]]), axis=0)
+            parents    = np.append(parents, active)
+            active = (len(parents)-1)
+            continue
+        
+        if "End Site" in line:
+            end_site = True
             offsets = np.append(offsets, np.array([[0, 0, 0]]), axis=0)
             orients.qs = np.append(orients.qs, np.array([[1, 0, 0, 0]]), axis=0)
             parents = np.append(parents, active)
             active = (len(parents) - 1)
+            end_site_joints = np.append(end_site_joints, active)
+            end_site_is_joint = True
+            end_site_match = re.match(".*#\s*name\s*:\s*(\w+).*", line)
+            if end_site_match:
+                names.append(end_site_match.group(1))
+            else:
+                names.append('{}_end_site'.format(names[parents[active]]))
             continue
-
-        if "End Site" in line:
-            end_site = True
-            continue
-
+              
         fmatch = re.match("\s*Frames:\s+(\d+)", line)
         if fmatch:
             if start and end:
-                fnum = (end - start) - 1
+                fnum = (end - start)-1
             else:
                 fnum = int(fmatch.group(1))
             jnum = len(parents)
             positions = offsets[np.newaxis].repeat(fnum, axis=0)
             rotations = np.zeros((fnum, len(orients), 3))
             continue
-
+        
         fmatch = re.match("\s*Frame Time:\s+([\d\.]+)", line)
         if fmatch:
             frametime = float(fmatch.group(1))
             continue
-
-        if (start and end) and (i < start or i >= end - 1):
+        
+        if (start and end) and (i < start or i >= end-1):
             i += 1
             continue
-
-        # dmatch = line.strip().split(' ')
-        dmatch = line.strip().split()
+        
+        dmatch = line.strip().split(' ')
         if dmatch:
             data_block = np.array(list(map(float, dmatch)))
-            N = len(parents)
+            N = len(parents) - len(end_site_joints)
+            non_end_site_joints = list( set(range(len(parents)))-set(end_site_joints) )
             fi = i - start if start else i
-            if channels == 3:
-                positions[fi, 0:1] = data_block[0:3]
-                rotations[fi, :] = data_block[3:].reshape(N, 3)
+            if   channels == 3:
+                positions[fi,0:1] = data_block[0:3]
+                rotations[fi, non_end_site_joints ] = data_block[3: ].reshape(N,3)
             elif channels == 6:
-                data_block = data_block.reshape(N, 6)
-                positions[fi, :] = data_block[:, 0:3]
-                rotations[fi, :] = data_block[:, 3:6]
+                data_block = data_block.reshape(N,6)
+                positions[fi,non_end_site_joints] = data_block[:,0:3]
+                rotations[fi,non_end_site_joints] = data_block[:,3:6]
             elif channels == 9:
-                positions[fi, 0] = data_block[0:3]
-                data_block = data_block[3:].reshape(N - 1, 9)
-                rotations[fi, 1:] = data_block[:, 3:6]
-                positions[fi, 1:] += data_block[:, 0:3] * data_block[:, 6:9]
+                assert False, 'need to change code to handle end_site_joints'
+                positions[fi,0] = data_block[0:3]
+                data_block = data_block[3:].reshape(N-1,9)
+                rotations[fi,1:] = data_block[:,3:6]
+                positions[fi,1:] += data_block[:,0:3] * data_block[:,6:9]
             else:
                 raise Exception("Too many channels! %i" % channels)
 
@@ -186,38 +201,13 @@ def load(filename, start=None, end=None, order=None, world=False, need_quater=Fa
 
     f.close()
 
-    all_rotations = []
-    canonical_order = 'xyz'
-    for i, order in enumerate(orders):
-        rot = rotations[:, i:i + 1]
-        if need_quater:
-            quat = Quaternions.from_euler(np.radians(rot), order=order, world=world)
-            all_rotations.append(quat)
-            continue
-        elif order != canonical_order:
-            quat = Quaternions.from_euler(np.radians(rot), order=order, world=world)
-            rot = np.degrees(quat.euler(order=canonical_order))
-        all_rotations.append(rot)
+    rotations = rotations[..., ::-1]
+    quat_rotations = Quaternions.from_euler(np.radians(rotations), order=order, world=world)
 
-    ## Perform forward kinematics to obtain actual positions (and not only the root joint pos)
-    to_mat_conversion = lambda r: euler2mat(r, order)
-    if need_quater:
-        to_mat_conversion = lambda r: quat2mat(r)
-    rotations = np.concatenate(all_rotations, axis=1)
-    rotations = np.apply_along_axis(to_mat_conversion, 2, torch.from_numpy(rotations))
-    global_positions = torch.from_numpy(positions.copy())
-    global_rot = torch.from_numpy(rotations.copy())
-    offsets = torch.from_numpy(offsets)
+    return (Animation(quat_rotations, positions, orients, offsets, parents), names, frametime)
+    
 
-    for i, p in enumerate(parents):
-        if i != 0:
-            global_rot[:, i] = torch.matmul(global_rot[:, p], global_rot[:, i])
-            joint_off = torch.cat(global_rot.shape[0]*[offsets[i]]).reshape((-1, 3, 1))
-            global_positions[:, i] = torch.matmul(global_rot[:, p], joint_off).squeeze(-1) + global_positions[:, p]
-
-    return Animation(rotations, global_positions.numpy(), orients, offsets.numpy(), parents, names, frametime)
-
-
+    
 def save(filename, anim, names=None, frametime=1.0/24.0, order='xyz', positions=False, orients=True):
     """
     Saves an Animation to file as BVH
@@ -302,8 +292,8 @@ def save(filename, anim, names=None, frametime=1.0/24.0, order='xyz', positions=
                             rots[i,j,ordermap[print_order[0]]], rots[i,j,ordermap[print_order[1]]], rots[i,j,ordermap[print_order[2]]]))
 
             f.write("\n")
-
-
+    
+    
 def save_joint(f, anim, names, t, i, print_order, children, positions=False):
     end_site = False
     if len(children[i]) == 0: #anim.parents[i+1] != i:
@@ -335,4 +325,3 @@ def save_joint(f, anim, names, t, i, print_order, children, positions=False):
     f.write("%s}\n" % t)
     
     return t
-

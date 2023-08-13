@@ -1,6 +1,9 @@
 import numpy as np
-from data_wrappers import animation_wrapper
 
+try:
+    from . import Animation
+except:
+    import Animation
 
 
 """ Maya Functions """
@@ -241,7 +244,7 @@ def constraints(anim, **kwargs):
     Parameters
     ----------
     
-    anim : animation_wrapper
+    anim : Animation
         Input animation
         
     masses : (F, J) ndarray
@@ -310,7 +313,7 @@ def graph(anim):
     Parameters
     ----------
     
-    anim : animation_wrapper
+    anim : Animation
         input animation
         
     Returns
@@ -345,7 +348,7 @@ def distances(anim):
     Parameters
     ----------
     
-    anim : animation_wrapper
+    anim : Animation
         input animation
         
     Returns

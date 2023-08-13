@@ -1,1 +1,0 @@
-from bvh.BVH import *
