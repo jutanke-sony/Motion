@@ -85,7 +85,7 @@ class Quaternions:
         or vector of different shape it is assumed to be
         a Quaternions by Scalars multiplication and the
         Quaternions are scaled using Slerp and the identity
-        quaternions.
+        quaternion.
         """
         
         """ If Quaternions type do Quaternions * Quaternions """

@@ -137,7 +137,7 @@ def qfix(q):
 
 def expmap_to_quaternion(e):
     """
-    Convert axis-angle rotations (aka exponential maps) to quaternions.
+    Convert axis-angle rotations (aka exponential maps) to quaternion.
     Stable formula from "Practical Parameterization of Rotations Using the Exponential Map".
     Expects a tensor of shape (*, 3), where * denotes any number of dimensions.
     Returns a tensor of shape (*, 4).
@@ -155,7 +155,7 @@ def expmap_to_quaternion(e):
 
 def euler_to_quaternion(e, order):
     """
-    Convert Euler angles to quaternions.
+    Convert Euler angles to quaternion.
     """
     assert e.shape[-1] == 3
     
