@@ -313,6 +313,42 @@ class Quaternions:
     
     def ravel(self):
         return self.qs.ravel()
+
+    def rotation_matrix(self, cont6d='False'):
+        """
+        Convert Quaternions to rotation matrices.
+        Args:
+            self: quaternions with real part first,
+                as tensor of shape (..., 4).
+            cont6d: True if should return continuous 6d representation
+        Returns:
+            Rotation matrices as tensor of shape (..., 6) or (..., 3, 3) depending on cont6d arg
+        """
+        qs = self.qs
+        r = qs[..., 0]
+        i = qs[..., 1]
+        j = qs[..., 2]
+        k = qs[..., 3]
+        two_s = 2.0 / (qs * qs).sum(-1)
+
+        o = np.stack(
+            (
+                1 - two_s * (j * j + k * k),
+                two_s * (i * j - k * r),
+                two_s * (i * k + j * r),
+                two_s * (i * j + k * r),
+                1 - two_s * (i * i + k * k),
+                two_s * (j * k - i * r),
+                two_s * (i * k - j * r),
+                two_s * (j * k + i * r),
+                1 - two_s * (i * i + j * j),
+            ),
+            -1,
+        )
+        rotations = o.reshape(qs.shape[:-1] + (3, 3))
+        if cont6d:
+            rotations = np.concatenate([rotations[..., 0], rotations[..., 1]], axis=-1)
+        return rotations
     
     @classmethod
     def id(cls, n):
