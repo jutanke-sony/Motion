@@ -213,6 +213,7 @@ def load(filename, start=None, end=None, order=None, world=True):
         positions = positions[:, 1:]
         orients = orients[1:]
         parents = parents[1:] - 1
+        names = names[1:]
 
     return (Animation(quat_rotations, positions, orients, offsets, parents), names, frametime)
 
