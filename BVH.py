@@ -204,7 +204,7 @@ def load(filename, start=None, end=None, order=None, world=True):
     rotations = rotations[..., ::-1]
     quat_rotations = Quaternions.from_euler(np.radians(rotations), order=order, world=world)
     # added for handling truebones common problem of redundant root joint
-    if not np.any(offsets[1]):
+    if not np.any(offsets[1]) and len(parents[parents == 0]) == 1:
         offsets[1] = offsets[0]
         offsets=offsets[1:]
         quat_rotations[:, 1] = quat_rotations[:, 0] * quat_rotations[:, 1]
