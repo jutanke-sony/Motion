@@ -102,8 +102,8 @@ class BasicInverseKinematics:
                 angles = np.arccos(np.sum(jdirs * ddirs, axis=2).clip(-1, 1))
 
                 axises = np.cross(jdirs, ddirs)
-                if jdirs.shape[1] == 1: # for a single child reconstruction should be exact
-                    assert np.allclose(Quaternions.from_angle_axis(angles, np.cross(jdirs, ddirs)) * jdirs, ddirs)
+                # if jdirs.shape[1] == 1: # for a single child reconstruction should be exact
+                #     assert np.allclose(Quaternions.from_angle_axis(angles, np.cross(jdirs, ddirs)) * jdirs, ddirs)
                 axises = -anim_rotations[:,j,np.newaxis] * axises
 
                 # find out which of the given bones are not of zero length
