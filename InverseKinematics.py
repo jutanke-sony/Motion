@@ -60,12 +60,13 @@ class BasicInverseKinematics:
         defaults to False
     """
     
-    def __init__(self, animation, positions, iterations=1, silent=True):
+    def __init__(self, animation, positions, iterations=1, silent=True, threshold=0):
     
         self.animation = animation
         self.positions = positions
         self.iterations = iterations
         self.silent = silent
+        self.threshold = threshold
         
     def __call__(self):
         
@@ -119,11 +120,20 @@ class BasicInverseKinematics:
                     averages = Quaternions.exp(rotations[:,dirs_positive].log().mean(axis=-2))
 
                 self.animation.rotations[:,j] = self.animation.rotations[:,j] * averages
-            
-            if not self.silent:
+
+            if self.threshold > 0:
+                anim_positions = Animation.positions_global(self.animation)
+                error = np.mean(np.sum((anim_positions - self.positions)**2.0, axis=-1)**0.5) # axis=-1)
+                if not self.silent:
+                    print('[BasicInverseKinematics] Iteration %i Error: %f' % (i + 1, error))
+                if error <= self.threshold:
+                    return self.animation
+
+            elif not self.silent:
                 anim_positions = Animation.positions_global(self.animation)
                 error = np.mean(np.sum((anim_positions - self.positions)**2.0, axis=-1)**0.5) # axis=-1)
                 print('[BasicInverseKinematics] Iteration %i Error: %f' % (i+1, error))
+
         
         return self.animation
 
@@ -517,7 +527,7 @@ class ICP:
                 print('[ICP] Iteration %i | Error: %f' % (i+1, error))
                 
 
-def animation_from_positions(positions, parents, offsets=None):
+def animation_from_positions(positions, parents, offsets=None, iterations=1):
 
     if not isinstance(parents, np.ndarray) and isinstance(parents, list):
         parents = np.array(parents)
@@ -550,7 +560,7 @@ def animation_from_positions(positions, parents, offsets=None):
     anim.positions[:,sorted_root_idx] = positions[:,0] # keep root positions. important for IK
 
     # apply IK
-    ik = BasicInverseKinematics(anim, positions, silent=False, iterations=1)
+    ik = BasicInverseKinematics(anim, positions, silent=False, iterations=iterations, threshold=0.8)
     new_anim = ik()
     return new_anim, sorted_order, parents
 
