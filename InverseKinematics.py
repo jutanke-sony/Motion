@@ -560,7 +560,7 @@ def animation_from_positions(positions, parents, offsets=None, iterations=1):
     anim.positions[:,sorted_root_idx] = positions[:,0] # keep root positions. important for IK
 
     # apply IK
-    ik = BasicInverseKinematics(anim, positions, silent=False, iterations=iterations, threshold=0.8)
+    ik = BasicInverseKinematics(anim, positions, silent=False, iterations=iterations, threshold=0.01)
     new_anim = ik()
     return new_anim, sorted_order, parents
 
