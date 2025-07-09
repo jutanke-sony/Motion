@@ -252,6 +252,12 @@ def load(
             names = names[1:]
             print("\tremove2")
 
+    # print("quat_rotations", quat_rotations.shape)
+    # print("positions", positions.shape)
+    # print("orients", orients.shape)
+    # print("offsets", offsets.shape)
+    # print("parents", parents)
+
     return (
         Animation(quat_rotations, positions, orients, offsets, parents),
         names,

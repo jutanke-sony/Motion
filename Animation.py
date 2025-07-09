@@ -479,8 +479,8 @@ def transforms_global(anim):
         each frame F and joint J
     """
 
-    joints = np.arange(anim.shape[1])
-    parents = np.arange(anim.shape[1])
+    # joints = np.arange(anim.shape[1])
+    # parents = np.arange(anim.shape[1])
     locals = transforms_local(anim)
     globals = transforms_blank(anim)
 
